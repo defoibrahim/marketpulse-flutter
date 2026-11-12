@@ -15,6 +15,10 @@ class AppConstants {
     defaultValue: 'ws://localhost:3000',
   );
 
+  /// Run on the bundled demo data with simulated live prices and no server:
+  /// `--dart-define=DEMO=true`.
+  static const bool demoMode = bool.fromEnvironment('DEMO');
+
   // API endpoints
   static const String marketDataEndpoint = '/market-data';
   static const String analyticsEndpoint = '/analytics';

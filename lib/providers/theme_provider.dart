@@ -4,7 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Light/dark theme choice. Follows the system until the user picks one,
 /// then remembers the pick across launches.
 class ThemeProvider with ChangeNotifier {
-  ThemeProvider([this._prefs]) : _themeMode = _read(_prefs);
+  /// [initialMode] overrides the saved choice for this run without saving
+  /// it (used by the demo launch options).
+  ThemeProvider([this._prefs, ThemeMode? initialMode])
+      : _themeMode = initialMode ?? _read(_prefs);
 
   static const storageKey = 'theme_mode';
 
