@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dartz/dartz.dart';
-import 'package:pulsenow_flutter/providers/market_data_provider.dart';
-import 'package:pulsenow_flutter/services/api_service.dart';
-import 'package:pulsenow_flutter/services/websocket_service.dart';
-import 'package:pulsenow_flutter/models/market_data_model.dart';
-import 'package:pulsenow_flutter/core/failure.dart';
+import 'package:marketpulse/providers/market_data_provider.dart';
+import 'package:marketpulse/services/api_service.dart';
+import 'package:marketpulse/services/websocket_service.dart';
+import 'package:marketpulse/models/market_data_model.dart';
+import 'package:marketpulse/core/failure.dart';
 
 // Mocks
 class MockApiService extends Mock implements ApiService {}

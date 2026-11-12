@@ -1,4 +1,4 @@
-package com.example.pulsenow_flutter
+package com.defoibrahim.marketpulse
 
 import io.flutter.embedding.android.FlutterActivity
 

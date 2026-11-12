@@ -6,11 +6,11 @@ import 'services/services.dart';
 import 'core/theme/app_theme.dart';
 
 void main() {
-  runApp(const PulseNowApp());
+  runApp(const MarketPulseApp());
 }
 
-class PulseNowApp extends StatelessWidget {
-  const PulseNowApp({super.key});
+class MarketPulseApp extends StatelessWidget {
+  const MarketPulseApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +46,7 @@ class PulseNowApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
-            title: 'PulseNow',
+            title: 'MarketPulse',
             debugShowCheckedModeBanner: false,
 
             // Dynamic Theme Mode
