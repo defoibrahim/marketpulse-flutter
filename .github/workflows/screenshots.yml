@@ -21,6 +21,10 @@ jobs:
         run: |
           if [ ! -f web/index.html ]; then
             flutter create --platforms=web --project-name marketpulse --org com.defoibrahim .
+            # Keep only the new web/ folder: build with the committed
+            # dependencies and project files.
+            git checkout -- .
+            git status --short
           fi
 
       - run: flutter pub get

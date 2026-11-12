@@ -15,7 +15,7 @@ dependencies:
   provider: ^6.1.5+1
 
   # HTTP Client
-  dio: ^5.9.0
+  dio: ^5.11.0
 
   # UI
   cupertino_icons: ^1.0.6

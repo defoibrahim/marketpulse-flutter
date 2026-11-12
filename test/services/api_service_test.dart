@@ -149,4 +149,24 @@ void main() {
       (_) => fail('expected a failure'),
     );
   });
+
+  test('timeouts, including slow response decoding, are network failures',
+      () async {
+    for (final type in [
+      DioExceptionType.connectionTimeout,
+      DioExceptionType.receiveTimeout,
+      DioExceptionType.transformTimeout,
+    ]) {
+      final api = serviceWith(
+        (options) async => throw DioException(requestOptions: options, type: type),
+      );
+
+      final result = await api.getMarketData();
+
+      result.fold(
+        (failure) => expect(failure, isA<NetworkFailure>(), reason: '$type'),
+        (_) => fail('expected a failure for $type'),
+      );
+    }
+  });
 }

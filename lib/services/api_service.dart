@@ -152,6 +152,7 @@ class DioApiService implements ApiService {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
         return const NetworkFailure(
           'The server took too long to respond. Please try again.',
         );
