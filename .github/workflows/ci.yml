@@ -38,11 +38,39 @@ jobs:
           name: pubspec-lock
           path: pubspec.lock
 
-      # Infos stay visible but don't fail the build: Flutter 3.47+ deprecates
-      # package:flutter/material.dart in favour of material_ui, which every
-      # file still imports. Warnings and errors still fail the job.
+      # Infos stay visible but don't fail the build. Flutter 3.47+ deprecates
+      # package:flutter/material.dart in favour of the material_ui package,
+      # but material_ui is a separate copy of the Material library: until our
+      # Material-based dependencies (skeletonizer, google_nav_bar) move too,
+      # migrating only our imports would split the app across two Theme and
+      # Material trees. Warnings and errors still fail the job.
       - name: Analyze
         run: flutter analyze --no-fatal-infos
 
       - name: Test
         run: flutter test
+
+  build-android:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # No android/key.properties in CI, so this also proves the debug-key
+      # fallback of the release signing config.
+      - name: Build
+        run: flutter build apk --release

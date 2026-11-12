@@ -50,7 +50,7 @@ void main() {
 
     test('a live update changes only the fields it carries', () {
       final base = market('BTC/USD', price: 100);
-      final updated = MarketData.updateFromJson(base, {
+      final updated = MarketData.updateFromJson(base, const {
         'symbol': 'BTC/USD',
         'price': '110',
         'volume': 'not a number',
@@ -66,12 +66,12 @@ void main() {
     test('a live update stretches the 24h range', () {
       final base = market('BTC/USD', price: 100);
       expect(
-        MarketData.updateFromJson(base, {'price': 200}).high24h,
+        MarketData.updateFromJson(base, const {'price': 200}).high24h,
         200,
       );
-      expect(MarketData.updateFromJson(base, {'price': 50}).low24h, 50);
+      expect(MarketData.updateFromJson(base, const {'price': 50}).low24h, 50);
       expect(
-        MarketData.updateFromJson(base, {'price': 101}).high24h,
+        MarketData.updateFromJson(base, const {'price': 101}).high24h,
         base.high24h,
       );
     });
@@ -79,7 +79,7 @@ void main() {
 
   group('AnalyticsOverview', () {
     test('parses nested movers and dominance', () {
-      final overview = AnalyticsOverview.fromJson({
+      final overview = AnalyticsOverview.fromJson(const {
         'totalMarketCap': 2.5e12,
         'totalVolume24h': 8.5e10,
         'activeMarkets': 10,
@@ -95,7 +95,7 @@ void main() {
 
     test('a missing nested object throws a FormatException', () {
       expect(
-        () => AnalyticsOverview.fromJson({
+        () => AnalyticsOverview.fromJson(const {
           'totalMarketCap': 1,
           'totalVolume24h': 1,
           'activeMarkets': 1,
@@ -141,7 +141,7 @@ void main() {
     });
 
     test('parses performance points', () {
-      final performance = PortfolioPerformance.fromJson({
+      final performance = PortfolioPerformance.fromJson(const {
         'timeframe': '7d',
         'data': [
           {
