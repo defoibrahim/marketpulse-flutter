@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'json_readers.dart';
+
 class PortfolioOverview extends Equatable {
   final double totalValue;
   final double totalPnl;
@@ -17,11 +19,11 @@ class PortfolioOverview extends Equatable {
 
   factory PortfolioOverview.fromJson(Map<String, dynamic> json) {
     return PortfolioOverview(
-      totalValue: _parseToDouble(json['totalValue']),
-      totalPnl: _parseToDouble(json['totalPnl']),
-      totalPnlPercent: _parseToDouble(json['totalPnlPercent']),
-      totalHoldings: json['totalHoldings'] as int,
-      lastUpdated: DateTime.parse(json['lastUpdated']),
+      totalValue: readDouble(json, 'totalValue'),
+      totalPnl: readDouble(json, 'totalPnl'),
+      totalPnlPercent: readDouble(json, 'totalPnlPercent'),
+      totalHoldings: readInt(json, 'totalHoldings'),
+      lastUpdated: readDate(json, 'lastUpdated'),
     );
   }
 
@@ -70,21 +72,32 @@ class PortfolioHolding extends Equatable {
 
   factory PortfolioHolding.fromJson(Map<String, dynamic> json) {
     return PortfolioHolding(
-      id: json['id'] as String,
-      symbol: json['symbol'] as String,
-      quantity: _parseToDouble(json['quantity']),
-      averagePrice: _parseToDouble(json['averagePrice']),
-      currentPrice: _parseToDouble(json['currentPrice']),
-      value: _parseToDouble(json['value']),
-      pnl: _parseToDouble(json['pnl']),
-      pnlPercent: _parseToDouble(json['pnlPercent']),
-      allocation: _parseToDouble(json['allocation']),
-      lastUpdated: DateTime.parse(json['lastUpdated']),
+      id: readString(json, 'id'),
+      symbol: readString(json, 'symbol'),
+      quantity: readDouble(json, 'quantity'),
+      averagePrice: readDouble(json, 'averagePrice'),
+      currentPrice: readDouble(json, 'currentPrice'),
+      value: readDouble(json, 'value'),
+      pnl: readDouble(json, 'pnl'),
+      pnlPercent: readDouble(json, 'pnlPercent'),
+      allocation: readDouble(json, 'allocation'),
+      lastUpdated: readDate(json, 'lastUpdated'),
     );
   }
 
   @override
-  List<Object?> get props => [id, symbol, quantity, value, pnl];
+  List<Object?> get props => [
+        id,
+        symbol,
+        quantity,
+        averagePrice,
+        currentPrice,
+        value,
+        pnl,
+        pnlPercent,
+        allocation,
+        lastUpdated,
+      ];
 
   static List<PortfolioHolding> get dummyList => List.generate(
         5,
@@ -116,11 +129,9 @@ class PortfolioPerformance extends Equatable {
 
   factory PortfolioPerformance.fromJson(Map<String, dynamic> json) {
     return PortfolioPerformance(
-      timeframe: json['timeframe'] as String,
-      data: (json['data'] as List)
-          .map((e) => PerformancePoint.fromJson(e))
-          .toList(),
-      summary: PerformanceSummary.fromJson(json['summary']),
+      timeframe: readString(json, 'timeframe'),
+      data: readList(json, 'data').map(PerformancePoint.fromJson).toList(),
+      summary: PerformanceSummary.fromJson(readMap(json, 'summary')),
     );
   }
 
@@ -143,10 +154,10 @@ class PerformancePoint extends Equatable {
 
   factory PerformancePoint.fromJson(Map<String, dynamic> json) {
     return PerformancePoint(
-      timestamp: DateTime.parse(json['timestamp']),
-      value: _parseToDouble(json['value']),
-      pnl: _parseToDouble(json['pnl']),
-      pnlPercent: _parseToDouble(json['pnlPercent']),
+      timestamp: readDate(json, 'timestamp'),
+      value: readDouble(json, 'value'),
+      pnl: readDouble(json, 'pnl'),
+      pnlPercent: readDouble(json, 'pnlPercent'),
     );
   }
 
@@ -167,19 +178,12 @@ class PerformanceSummary extends Equatable {
 
   factory PerformanceSummary.fromJson(Map<String, dynamic> json) {
     return PerformanceSummary(
-      startValue: _parseToDouble(json['startValue']),
-      endValue: _parseToDouble(json['endValue']),
-      totalReturn: _parseToDouble(json['totalReturn']),
+      startValue: readDouble(json, 'startValue'),
+      endValue: readDouble(json, 'endValue'),
+      totalReturn: readDouble(json, 'totalReturn'),
     );
   }
 
   @override
   List<Object?> get props => [startValue, endValue, totalReturn];
-}
-
-// Helper to handle String or Number input for doubles
-double _parseToDouble(dynamic value) {
-  if (value is num) return value.toDouble();
-  if (value is String) return double.tryParse(value) ?? 0.0;
-  return 0.0;
 }

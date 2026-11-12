@@ -1,176 +1,176 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:skeletonizer/skeletonizer.dart';
-import '../providers/analytics_provider.dart';
+
 import '../models/analytics_model.dart';
-import '../widgets/analytics_widgets.dart';
-import '../widgets/app_progress.dart';
+import '../providers/analytics_provider.dart';
 import '../utils/constants.dart';
 import '../utils/extensions.dart';
+import '../widgets/analytics_widgets.dart';
+import '../widgets/widgets.dart';
 
-class AnalyticsScreen extends StatelessWidget {
+class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Load data on first build if not already loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<AnalyticsProvider>();
-      // Check if data is missing and not currently loading to avoid multiple fetches
-      if (provider.overview == null && !provider.isLoading) {
-        provider.loadData();
-      }
-    });
+  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+}
 
+class _AnalyticsScreenState extends State<AnalyticsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<AnalyticsProvider>();
+      if (!provider.hasData && !provider.isLoading) provider.loadData();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Consumer<AnalyticsProvider>(
       builder: (context, provider, _) {
-        if (provider.error != null && provider.overview == null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                const SizedBox(height: 16),
-                Text(provider.error!),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: provider.loadData,
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
+        final error = provider.error;
+        if (error != null && !provider.hasData && !provider.isLoading) {
+          return MarketErrorView(error: error, onRetry: provider.loadData);
         }
 
-        // Show skeleton if we are loading OR if we have no data yet (and no error)
-        final showSkeleton = provider.isLoading || provider.overview == null;
-
-        final overview =
-            showSkeleton ? AnalyticsOverview.dummy : provider.overview;
-        final trends = showSkeleton ? TrendData.dummy : provider.trendData;
-
-        // If we have no data and not loading/error, just return empty
-        if (overview == null) return const SizedBox.shrink();
+        // The page skeleton only covers the first load. Changing the
+        // timeframe only puts the trend chart into its loading state.
+        final showSkeleton = !provider.hasData;
+        final overview = provider.overview ?? AnalyticsOverview.dummy;
+        final trends = provider.trendData;
+        final trendsLoading =
+            showSkeleton || provider.isLoadingTrends || trends == null;
+        final shownTrends = trends ?? TrendData.dummy;
+        const sectionTitle =
+            TextStyle(fontSize: 20, fontWeight: FontWeight.bold);
 
         return Column(
           children: [
             AppLinearProgress(isLoading: provider.isLoading),
             Expanded(
-              child: SmartRefresher(
-                controller: provider.refreshController,
-                physics: showSkeleton
-                    ? const NeverScrollableScrollPhysics()
-                    : const AlwaysScrollableScrollPhysics(),
+              child: RefreshIndicator(
                 onRefresh: provider.loadData,
-                header: const WaterDropMaterialHeader(
-                  backgroundColor: Color(0xFF6C5CE7),
-                  color: Colors.black,
-                ),
-                child: Skeletonizer(
-                  enabled: showSkeleton,
-                  child: SingleChildScrollView(
-                    physics: null,
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header Stats
-                        GridView.count(
-                          crossAxisCount: 2,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          childAspectRatio: 1.3,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          children: [
-                            StatCard(
-                              label: 'Market Cap',
-                              value: overview.totalMarketCap.formatAsCurrency(),
-                              icon: Icons.pie_chart,
-                            ),
-                            StatCard(
-                              label: '24h Volume',
-                              value: overview.totalVolume24h.formatAsCurrency(),
-                              icon: Icons.bar_chart,
-                              color: Colors.blue,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Market Dominance
-                        const Text(
-                          'Market Dominance',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 16),
-                        DominancePieChart(dominance: overview.dominance),
-
-                        const SizedBox(height: 24),
-
-                        // Market Trends
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Market Trends',
-                              style: TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                            ),
-                            // Timeframe Toggle
-                            DropdownButton<String>(
-                              value: provider.selectedTimeframe,
-                              items: AppConstants.timeframes.map((e) {
-                                return DropdownMenuItem(
-                                    value: e, child: Text(e));
-                              }).toList(),
-                              onChanged: (val) {
-                                if (val != null) provider.setTimeframe(val);
-                                // Hover: (String?) -> void
-                              },
-                              underline: Container(), // Remove underline
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        if (trends != null) ...[
-                          Text(
-                            'Volatility: ${trends.summary.volatility.toStringAsFixed(2)}%',
-                            style: TextStyle(color: Colors.grey[600]),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (error != null && provider.hasData) ...[
+                      ErrorBanner(
+                        message: error,
+                        onRetry: provider.loadData,
+                        padding: EdgeInsets.zero,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    Skeletonizer(
+                      enabled: showSkeleton,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: StatCard(
+                                  label: 'Market Cap',
+                                  value: overview.totalMarketCap.formatCompact(),
+                                  icon: Icons.pie_chart,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: StatCard(
+                                  label: '24h Volume',
+                                  value: overview.totalVolume24h.formatCompact(),
+                                  icon: Icons.bar_chart,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 24),
+                          const Text('Market Dominance', style: sectionTitle),
                           const SizedBox(height: 16),
-                          TrendLineChart(
-                            trendData: trends,
-                            isPositive: trends.summary.change >= 0,
-                            overrideColor: showSkeleton ? Colors.grey : null,
-                          ),
+                          DominancePieChart(dominance: overview.dominance),
                         ],
-
-                        const SizedBox(height: 24),
-
-                        // Top Movers
-                        const Text(
-                          'Top Movers (24h)',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Flexible(
+                          child: Text('Market Trends', style: sectionTitle),
                         ),
-                        const SizedBox(height: 16),
-                        _MoverTile(
-                          title: 'Top Gainer',
-                          mover: overview.topGainer,
-                          isGainer: true,
-                        ),
-                        const SizedBox(height: 8),
-                        _MoverTile(
-                          title: 'Top Loser',
-                          mover: overview.topLoser,
-                          isGainer: false,
+                        DropdownButton<String>(
+                          value: provider.selectedTimeframe,
+                          underline: const SizedBox.shrink(),
+                          items: [
+                            for (final timeframe in AppConstants.timeframes)
+                              DropdownMenuItem(
+                                value: timeframe,
+                                child: Text(timeframe),
+                              ),
+                          ],
+                          onChanged: showSkeleton
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    provider.setTimeframe(value);
+                                  }
+                                },
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Skeletonizer(
+                      enabled: trendsLoading,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Volatility: ${shownTrends.summary.volatility.toStringAsFixed(2)}%',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TrendLineChart(
+                            trendData: shownTrends,
+                            isPositive: shownTrends.summary.change >= 0,
+                            overrideColor: trendsLoading ? Colors.grey : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Skeletonizer(
+                      enabled: showSkeleton,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Top Movers (24h)', style: sectionTitle),
+                          const SizedBox(height: 16),
+                          _MoverTile(
+                            title: 'Top Gainer',
+                            mover: overview.topGainer,
+                            isGainer: true,
+                          ),
+                          const SizedBox(height: 8),
+                          _MoverTile(
+                            title: 'Top Loser',
+                            mover: overview.topLoser,
+                            isGainer: false,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -219,7 +219,7 @@ class _MoverTile extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             Text(
-              '${isGainer ? '+' : ''}${mover.change}%',
+              mover.change.formatAsPercentage(),
               style: TextStyle(
                 color: isGainer ? Colors.green : Colors.red,
                 fontSize: 12,

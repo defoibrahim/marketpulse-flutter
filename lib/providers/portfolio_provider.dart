@@ -1,108 +1,106 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
-import 'package:pull_to_refresh/pull_to_refresh.dart';
-import '../services/api_service.dart';
-import '../models/portfolio_model.dart';
+
 import '../core/failure.dart';
+import '../models/portfolio_model.dart';
+import '../services/api_service.dart';
 
 class PortfolioProvider extends ChangeNotifier {
-  final ApiService _apiService;
+  PortfolioProvider(this._api);
 
-  PortfolioProvider(this._apiService);
-
-  final RefreshController _refreshController = RefreshController();
-  RefreshController get refreshController => _refreshController;
+  final ApiService _api;
 
   PortfolioOverview? _overview;
   List<PortfolioHolding>? _holdings;
   PortfolioPerformance? _performance;
-
   bool _isLoadingOverview = false;
   bool _isLoadingHoldings = false;
   bool _isLoadingPerformance = false;
-
   String? _error;
   String _selectedTimeframe = '24h';
+
+  /// Only the latest performance request may update the data.
+  int _performanceRequest = 0;
+  Future<void>? _inFlight;
+  bool _disposed = false;
 
   PortfolioOverview? get overview => _overview;
   List<PortfolioHolding>? get holdings => _holdings;
   PortfolioPerformance? get performance => _performance;
-
+  bool get isLoadingPerformance => _isLoadingPerformance;
   bool get isLoading =>
       _isLoadingOverview || _isLoadingHoldings || _isLoadingPerformance;
+  bool get hasData => _overview != null;
   String? get error => _error;
   String get selectedTimeframe => _selectedTimeframe;
 
-  Future<void> loadData() async {
-    _setLoading(overview: true, holdings: true, performance: true);
+  /// Loads the overview, holdings and performance. Calls made while a load
+  /// is running share it.
+  Future<void> loadData() =>
+      _inFlight ??= _load().whenComplete(() => _inFlight = null);
+
+  Future<void> _load() async {
+    _isLoadingOverview = true;
+    _isLoadingHoldings = true;
+    _isLoadingPerformance = true;
     _error = null;
+    _notify();
 
-    // Simulate network delay to show skeleton
-    await Future.delayed(const Duration(milliseconds: 500));
+    final performanceRequest = ++_performanceRequest;
+    final (overview, holdings, performance) = await (
+      _api.getPortfolioOverview(),
+      _api.getPortfolioHoldings(),
+      _api.getPortfolioPerformance(timeframe: _selectedTimeframe),
+    ).wait;
+    if (_disposed) return;
 
-    final results = await Future.wait([
-      _apiService.getPortfolioOverview(),
-      _apiService.getPortfolioHoldings(),
-      _apiService.getPortfolioPerformance(timeframe: _selectedTimeframe),
-    ]);
-
-    results[0].fold(
-      _handleFailure,
-      (data) => _overview = data as PortfolioOverview,
-    );
-
-    results[1].fold(
-      _handleFailure,
-      (data) => _holdings = data as List<PortfolioHolding>,
-    );
-
-    results[2].fold(
-      _handleFailure,
-      (data) => _performance = data as PortfolioPerformance,
-    );
-
-    _setLoading(overview: false, holdings: false, performance: false);
-    _refreshController.refreshCompleted();
+    overview.fold(_setError, (data) {
+      _overview = data;
+    });
+    holdings.fold(_setError, (data) {
+      _holdings = data;
+    });
+    _isLoadingOverview = false;
+    _isLoadingHoldings = false;
+    if (performanceRequest == _performanceRequest) {
+      performance.fold(_setError, (data) {
+        _performance = data;
+      });
+      _isLoadingPerformance = false;
+    }
+    _notify();
   }
 
   Future<void> setTimeframe(String timeframe) async {
     if (_selectedTimeframe == timeframe) return;
-
     _selectedTimeframe = timeframe;
+    final request = ++_performanceRequest;
     _isLoadingPerformance = true;
-    notifyListeners();
+    _error = null;
+    _notify();
 
     final result =
-        await _apiService.getPortfolioPerformance(timeframe: timeframe);
-
-    result.fold(
-      _handleFailure,
-      (data) => _performance = data,
-    );
-
+        await _api.getPortfolioPerformance(timeframe: timeframe);
+    if (_disposed || request != _performanceRequest) return;
+    result.fold(_setError, (data) {
+      _performance = data;
+    });
     _isLoadingPerformance = false;
-    notifyListeners();
+    _notify();
   }
 
-  void _setLoading({
-    bool? overview,
-    bool? holdings,
-    bool? performance,
-  }) {
-    if (overview != null) _isLoadingOverview = overview;
-    if (holdings != null) _isLoadingHoldings = holdings;
-    if (performance != null) _isLoadingPerformance = performance;
-    notifyListeners();
+  void _setError(Failure failure) {
+    _error = failure.message;
   }
 
-  void _handleFailure(Failure failure) {
-    _error = failure is NetworkFailure
-        ? 'Connection error. Please check your internet.'
-        : failure.message;
+  void _notify() {
+    if (!_disposed) notifyListeners();
   }
 
   @override
   void dispose() {
-    _refreshController.dispose();
+    _disposed = true;
     super.dispose();
   }
 }

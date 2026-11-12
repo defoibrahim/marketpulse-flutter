@@ -1,97 +1,126 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
-import 'package:pull_to_refresh/pull_to_refresh.dart';
-import '../providers/market_data_provider.dart';
-import '../models/market_data_model.dart';
-import '../widgets/widgets.dart';
-import './market_detail_screen.dart';
 
-class MarketDataScreen extends StatelessWidget {
+import '../models/market_data_model.dart';
+import '../providers/market_data_provider.dart';
+import '../widgets/widgets.dart';
+import 'market_detail_screen.dart';
+
+class MarketDataScreen extends StatefulWidget {
   const MarketDataScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Load data on first build
+  State<MarketDataScreen> createState() => _MarketDataScreenState();
+}
+
+class _MarketDataScreenState extends State<MarketDataScreen> {
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final provider = context.read<MarketDataProvider>();
+    _searchController.text = provider.searchQuery;
+    // Load after the first frame: notifying listeners during build throws.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<MarketDataProvider>();
-      if (!provider.hasData && !provider.isLoading) {
+      if (mounted && !provider.hasLoaded && !provider.isLoading) {
         provider.loadMarketData();
       }
     });
+  }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _clearSearch(MarketDataProvider provider) {
+    _searchController.clear();
+    provider.setSearchQuery('');
+  }
+
+  void _openDetail(BuildContext context, MarketData data) {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => MarketDetailScreen(symbol: data.symbol),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Consumer<MarketDataProvider>(
-      builder: (context, provider, child) {
-        final isLoading = provider.isLoading;
-        final showSkeleton = isLoading;
-        final dataToShow =
-            showSkeleton ? MarketData.dummyList : provider.marketData;
+      builder: (context, provider, _) {
+        final error = provider.error;
+        // Skeleton until the first successful load; later refreshes keep
+        // the current list on screen.
+        final showSkeleton =
+            !provider.hasData && !provider.hasLoaded && error == null;
+        final items = showSkeleton ? MarketData.dummyList : provider.marketData;
 
         return Column(
           children: [
-            AppLinearProgress(isLoading: isLoading),
+            AppLinearProgress(isLoading: provider.isLoading),
             Expanded(
-              child: SmartRefresher(
-                controller: provider.refreshController,
-                physics: showSkeleton
-                    ? const NeverScrollableScrollPhysics()
-                    : const AlwaysScrollableScrollPhysics(),
-                enablePullDown: true,
-                header: const WaterDropMaterialHeader(
-                  backgroundColor: Color(0xFF6C5CE7),
-                  color: Colors.black,
-                ),
-                onRefresh: () async {
-                  await provider.loadMarketData();
-                  provider.refreshController.refreshCompleted();
-                },
+              child: RefreshIndicator(
+                onRefresh: provider.loadMarketData,
                 child: CustomScrollView(
-                  physics: null,
+                  physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    // Persistent Search and Filter Header
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _headerDelegate(
-                        child: MarketFilterBar(provider: provider),
+                    // Sizes itself to the filter bar, so larger text sizes
+                    // don't clip it.
+                    PinnedHeaderSliver(
+                      child: ColoredBox(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        child: MarketFilterBar(
+                          controller: _searchController,
+                          provider: provider,
+                        ),
                       ),
                     ),
-
-                    // Error state (only when no data)
-                    if (provider.hasError && !provider.hasData)
+                    if (error != null && provider.hasData)
+                      SliverToBoxAdapter(
+                        child: ErrorBanner(
+                          message: error,
+                          onRetry: provider.loadMarketData,
+                        ),
+                      ),
+                    if (error != null && !provider.hasData)
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: MarketErrorView(
-                          error: provider.error ?? 'Something went wrong',
+                          error: error,
                           onRetry: provider.loadMarketData,
                         ),
                       )
-                    // Empty state
-                    else if (!isLoading && !provider.hasData)
+                    else if (items.isEmpty)
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: MarketEmptyView(
-                          isFiltering: provider.searchQuery.isNotEmpty,
-                          onClear: () => provider.setSearchQuery(''),
+                          isFiltering: provider.isFiltering,
+                          onClear: () => _clearSearch(provider),
                         ),
                       )
-                    // Data state with skeleton
                     else
                       SliverSkeletonizer(
                         enabled: showSkeleton,
-                        child: SliverPrototypeExtentList(
-                          prototypeItem: MarketDataListItem(
-                            data: MarketData.dummy,
-                            onTap: null,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final data = dataToShow[index];
+                        child: SliverPadding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          sliver: SliverList.builder(
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final data = items[index];
                               return MarketDataListItem(
+                                key: ValueKey(data.symbol),
                                 data: data,
-                                onTap: () => _onItemTap(context, data),
+                                onTap: showSkeleton
+                                    ? null
+                                    : () => _openDetail(context, data),
                               );
                             },
-                            childCount: dataToShow.length,
                           ),
                         ),
                       ),
@@ -102,24 +131,6 @@ class MarketDataScreen extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-
-  void _onItemTap(BuildContext context, MarketData data) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MarketDetailScreen(symbol: data.symbol),
-      ),
-    );
-  }
-
-  /// Create a SliverPersistentHeaderDelegate
-  SliverPersistentHeaderDelegate _headerDelegate({required Widget child}) {
-    return StickyHeaderDelegate(
-      minHeight: 120,
-      maxHeight: 120,
-      child: child,
     );
   }
 }

@@ -27,6 +27,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Check the lockfile is committed
+        run: |
+          if ! git diff --quiet -- pubspec.lock; then
+            echo "::warning::pubspec.lock changed during pub get; commit the uploaded artifact."
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pubspec-lock
+          path: pubspec.lock
+
       # Infos stay visible but don't fail the build: Flutter 3.47+ deprecates
       # package:flutter/material.dart in favour of material_ui, which every
       # file still imports. Warnings and errors still fail the job.

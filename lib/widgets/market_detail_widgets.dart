@@ -112,19 +112,19 @@ class MarketStatsGrid extends StatelessWidget {
           crossAxisSpacing: 16,
           childAspectRatio: 2.1,
           children: [
-            StatCard(
+            DetailStatTile(
               label: '24h High',
               value: data.high24h.formatAsCurrency(),
             ),
-            StatCard(
+            DetailStatTile(
               label: '24h Low',
               value: data.low24h.formatAsCurrency(),
             ),
-            StatCard(
+            DetailStatTile(
               label: 'Volume',
               value: data.volume.formatCompact(),
             ),
-            StatCard(
+            DetailStatTile(
               label: 'Market Cap',
               value: data.marketCap.formatCompact(),
             ),
@@ -135,11 +135,11 @@ class MarketStatsGrid extends StatelessWidget {
   }
 }
 
-class StatCard extends StatelessWidget {
+class DetailStatTile extends StatelessWidget {
   final String label;
   final String value;
 
-  const StatCard({
+  const DetailStatTile({
     super.key,
     required this.label,
     required this.value,

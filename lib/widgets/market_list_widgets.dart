@@ -4,156 +4,90 @@ import '../utils/extensions.dart';
 import 'symbol_avatar.dart';
 import '../providers/market_data_provider.dart';
 
-/// Delegate for sticky header
-class StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final double minHeight;
-  final double maxHeight;
-  final Widget child;
-
-  StickyHeaderDelegate({
-    required this.minHeight,
-    required this.maxHeight,
-    required this.child,
+/// Search field and sort chips above the market list.
+///
+/// The screen owns [controller], so it can clear the search from elsewhere
+/// (e.g. the "Clear search" button of the empty state).
+class MarketFilterBar extends StatelessWidget {
+  const MarketFilterBar({
+    super.key,
+    required this.controller,
+    required this.provider,
   });
 
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: child,
-    );
-  }
-
-  @override
-  double get maxExtent => maxHeight;
-
-  @override
-  double get minExtent => minHeight;
-
-  @override
-  bool shouldRebuild(StickyHeaderDelegate oldDelegate) {
-    return maxHeight != oldDelegate.maxHeight ||
-        minHeight != oldDelegate.minHeight ||
-        child != oldDelegate.child;
-  }
-}
-
-/// Search and Filter Bar
-class MarketFilterBar extends StatefulWidget {
+  final TextEditingController controller;
   final MarketDataProvider provider;
 
-  const MarketFilterBar({super.key, required this.provider});
-
-  @override
-  State<MarketFilterBar> createState() => _MarketFilterBarState();
-}
-
-class _MarketFilterBarState extends State<MarketFilterBar> {
-  late TextEditingController _controller;
-  final FocusNode _focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize controller with current search query from provider
-    _controller = TextEditingController(text: widget.provider.searchQuery);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _clearSearch() {
-    _controller.clear();
-    widget.provider.setSearchQuery('');
-    _focusNode.unfocus(); // Close keyboard
+  void _clear(BuildContext context) {
+    controller.clear();
+    provider.setSearchQuery('');
+    FocusScope.of(context).unfocus();
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: colors.outlineVariant),
+    );
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // Search Bar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            textInputAction: TextInputAction.done,
-            onTapOutside: (_) => _focusNode.unfocus(),
-            decoration: InputDecoration(
-              hintText: 'Search markets...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _controller.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: _clearSearch,
-                    )
-                  : null,
-              filled: true,
-              fillColor: Theme.of(context).cardColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF2D2D2D), // Consistent with cards
+          child: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) => TextField(
+              controller: controller,
+              textInputAction: TextInputAction.search,
+              onTapOutside: (_) => FocusScope.of(context).unfocus(),
+              onChanged: provider.setSearchQuery,
+              decoration: InputDecoration(
+                hintText: 'Search markets...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: value.text.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => _clear(context),
+                      ),
+                filled: true,
+                fillColor: Theme.of(context).cardColor,
+                border: border,
+                enabledBorder: border,
+                focusedBorder: border.copyWith(
+                  borderSide: BorderSide(color: colors.outline, width: 1.5),
                 ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Color(0xFF2D2D2D),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.grey.withValues(alpha: 0.5),
-                  width: 1.5,
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
             ),
-            onChanged: (value) {
-              widget.provider.setSearchQuery(value);
-              // Rebuild to show/hide clear icon
-              setState(() {});
-            },
           ),
         ),
-
-        // Sort Chips
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              MarketSortChip(
-                label: 'Price',
-                isSelected: widget.provider.sortOption == SortOption.price,
-                sortOrder: widget.provider.sortOrder,
-                onTap: () => widget.provider.setSortOption(SortOption.price),
-              ),
-              const SizedBox(width: 8),
-              MarketSortChip(
-                label: 'Change',
-                isSelected: widget.provider.sortOption == SortOption.change,
-                sortOrder: widget.provider.sortOrder,
-                onTap: () => widget.provider.setSortOption(SortOption.change),
-              ),
-              const SizedBox(width: 8),
-              MarketSortChip(
-                label: 'Symbol',
-                isSelected: widget.provider.sortOption == SortOption.symbol,
-                sortOrder: widget.provider.sortOrder,
-                onTap: () => widget.provider.setSortOption(SortOption.symbol),
-              ),
+              for (final (option, label) in const [
+                (SortOption.price, 'Price'),
+                (SortOption.change, 'Change'),
+                (SortOption.symbol, 'Symbol'),
+              ]) ...[
+                MarketSortChip(
+                  label: label,
+                  isSelected: provider.sortOption == option,
+                  sortOrder: provider.sortOrder,
+                  onTap: () => provider.setSortOption(option),
+                ),
+                const SizedBox(width: 8),
+              ],
             ],
           ),
         ),
+        const SizedBox(height: 8),
       ],
     );
   }

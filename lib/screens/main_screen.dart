@@ -1,144 +1,126 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
-import 'market_data_screen.dart';
-import 'portfolio_screen.dart';
-import 'analytics_screen.dart';
-import '../providers/market_data_provider.dart';
-import '../providers/theme_provider.dart';
-import '../providers/navigation_provider.dart';
+import 'package:provider/provider.dart';
 
 import '../gen/assets.gen.dart';
+import '../providers/market_data_provider.dart';
+import '../providers/navigation_provider.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/widgets.dart';
+import 'analytics_screen.dart';
+import 'market_data_screen.dart';
+import 'portfolio_screen.dart';
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
   static const List<Widget> _screens = [
     MarketDataScreen(),
     AnalyticsScreen(),
     PortfolioScreen(),
   ];
 
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Close the live-price socket while the app is in the background and
+    // reopen it when it comes back.
+    _lifecycle = AppLifecycleListener(
+      onHide: () {
+        if (mounted) context.read<MarketDataProvider>().pauseRealTime();
+      },
+      onShow: () {
+        if (mounted) context.read<MarketDataProvider>().resumeRealTime();
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<NavigationProvider>(
-      builder: (context, navProvider, _) {
-        final selectedIndex = navProvider.selectedIndex;
+    final navProvider = context.watch<NavigationProvider>();
+    final selectedIndex = navProvider.selectedIndex;
+    final colors = Theme.of(context).colorScheme;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Assets.images.logo.image(
-                  height: 32,
-                  fit: BoxFit.contain,
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Assets.images.logo.image(
+              height: 32,
+              fit: BoxFit.contain,
+              excludeFromSemantics: true,
+            ),
+            const SizedBox(width: 12),
+            const Text('MarketPulse'),
+          ],
+        ),
+        elevation: 0,
+        actions: [
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              final isDark = themeProvider.isDarkMode;
+              return IconButton(
+                icon: Icon(
+                  isDark ? Icons.light_mode : Icons.dark_mode,
+                  color: isDark ? Colors.amber : Colors.indigo,
                 ),
-                const SizedBox(width: 12),
-                const Text('MarketPulse'),
+                onPressed: themeProvider.toggleTheme,
+                tooltip: isDark ? 'Switch to light mode' : 'Switch to dark mode',
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          // Live prices only apply to the market tab.
+          if (selectedIndex == 0) ...[
+            const LiveToggle(),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: IndexedStack(index: selectedIndex, children: _screens),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        color: Theme.of(context).cardColor,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+            child: GNav(
+              gap: 8,
+              activeColor: colors.primary,
+              iconSize: 24,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              duration: const Duration(milliseconds: 400),
+              tabBackgroundColor: colors.primary.withValues(alpha: 0.1),
+              color: Colors.grey,
+              tabs: const [
+                GButton(icon: Icons.candlestick_chart, text: 'Market'),
+                GButton(icon: Icons.bar_chart, text: 'Analytics'),
+                GButton(icon: Icons.pie_chart_outline, text: 'Portfolio'),
               ],
-            ),
-            elevation: 0,
-            actions: [
-              // Theme toggle button
-              Consumer<ThemeProvider>(
-                builder: (context, themeProvider, child) {
-                  final isDark = themeProvider.isDarkMode;
-                  return IconButton(
-                    icon: Icon(
-                      isDark ? Icons.light_mode : Icons.dark_mode,
-                      color: isDark ? Colors.amber : Colors.indigo,
-                    ),
-                    onPressed: themeProvider.toggleTheme,
-                    tooltip:
-                        isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-                  );
-                },
-              ),
-              const SizedBox(width: 8),
-
-              // Real-time toggle button (Visible only on Market Data tab)
-              if (selectedIndex == 0)
-                Consumer<MarketDataProvider>(
-                  builder: (context, provider, child) {
-                    final isLive = provider.isRealTimeEnabled;
-                    return TextButton.icon(
-                      onPressed: () {
-                        if (isLive) {
-                          provider.disableRealTimeUpdates();
-                        } else {
-                          provider.enableRealTimeUpdates();
-                        }
-                      },
-                      icon: Icon(
-                        isLive ? Icons.wifi : Icons.wifi_off,
-                        color: isLive ? Colors.green : Colors.grey,
-                        size: 20,
-                      ),
-                      label: Text(
-                        isLive ? 'LIVE' : 'OFF',
-                        style: TextStyle(
-                          color: isLive ? Colors.green : Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              if (selectedIndex == 0) const SizedBox(width: 8),
-            ],
-          ),
-          body: GestureDetector(
-            onTap: () => FocusScope.of(context).unfocus(),
-            child: SafeArea(
-              child: IndexedStack(
-                index: selectedIndex,
-                children: _screens,
-              ),
+              selectedIndex: selectedIndex,
+              onTabChange: navProvider.setIndex,
             ),
           ),
-          bottomNavigationBar: Container(
-            color: Theme.of(context).cardColor,
-            child: SafeArea(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 15.0, vertical: 8.0),
-                child: GNav(
-                  gap: 8,
-                  activeColor: Theme.of(context).colorScheme.primary,
-                  iconSize: 24,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  duration: const Duration(milliseconds: 400),
-                  tabBackgroundColor: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.1),
-                  color: Colors.grey,
-                  tabs: const [
-                    GButton(
-                      icon: Icons.candlestick_chart,
-                      text: 'Market',
-                    ),
-                    GButton(
-                      icon: Icons.bar_chart,
-                      text: 'Analytics',
-                    ),
-                    GButton(
-                      icon: Icons.pie_chart_outline,
-                      text: 'Portfolio',
-                    ),
-                  ],
-                  selectedIndex: selectedIndex,
-                  onTabChange: (index) {
-                    navProvider.setIndex(index);
-                  },
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
