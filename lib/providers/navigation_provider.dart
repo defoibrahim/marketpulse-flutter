@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Provider for managing the bottom navigation state
 class NavigationProvider with ChangeNotifier {
-  int _selectedIndex = 0;
+  NavigationProvider({int initialIndex = 0}) : _selectedIndex = initialIndex;
+
+  int _selectedIndex;
 
   int get selectedIndex => _selectedIndex;
 

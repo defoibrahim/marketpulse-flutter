@@ -1,0 +1,19 @@
+{
+  "name": "marketpulse-mock-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mock REST and WebSocket API for the MarketPulse Flutter app, serving demo data.",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "fixtures": "node scripts/generate-fixtures.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -22,7 +22,7 @@ I built it as a practice project to work through a realistic data-heavy mobile a
   <img src="screenshots/light_mode.png" alt="Portfolio screen in the light theme" width="31%">
 </p>
 
-The screenshots show demo data from a local mock API (see [Data source](#data-source)).
+The screenshots show demo data (see [Data source](#data-source)).
 
 ## Features
 
@@ -56,14 +56,17 @@ flowchart LR
 
 ```
 lib/
-├── core/        # Failure types, app theme
+├── core/        # Failure types, app theme, demo launch options
 ├── gen/         # flutter_gen asset accessors
 ├── models/      # MarketData, analytics and portfolio models
 ├── providers/   # ChangeNotifier state
 ├── screens/     # Market, detail, analytics, portfolio, shell
-├── services/    # ApiService (Dio), WebSocketService
+├── services/    # ApiService (Dio), WebSocketService, demo/ (offline data and feed)
 ├── utils/       # Constants, number formatting
 └── widgets/     # List items, charts, cards, avatars
+assets/demo/     # Demo data shared by demo mode and the mock API
+mock_api/        # Node mock of the REST and WebSocket API, with contract tests
+tool/screenshots/ # Puppeteer capture script for the Screenshots workflow
 ```
 
 ## Tech stack
@@ -79,13 +82,18 @@ lib/
 | Formatting | intl |
 | Storage | shared_preferences (theme choice) |
 | Tooling | flutter_lints, mocktail, fake_async, flutter_gen, flutter_native_splash, flutter_launcher_icons |
-| CI | GitHub Actions: `flutter analyze` and `flutter test` on every push and pull request |
+| Mock API | Node 22, `ws`, `node:test` |
+| CI | GitHub Actions: analyze, test, release APK build and mock API contract tests on every push and pull request; a manual screenshot workflow |
 
 ## Data source
 
-MarketPulse is a client only: **the backend isn't part of this repository.** The app talks to a small local REST and WebSocket API that serves demo market data, and it shows an error with a Retry button if that API isn't running.
+The app reads market, analytics and portfolio data from a REST API and live prices from a WebSocket. Everything it shows is **demo data**; it is not connected to a real exchange. There are three ways to feed it:
 
-The URLs come from `--dart-define` and default to `localhost`:
+1. **Demo mode** (no server): `--dart-define=DEMO=true` serves the bundled data in [`assets/demo/demo_data.json`](assets/demo/demo_data.json) and simulates live ticks in the app.
+2. **The mock API** in [`mock_api/`](mock_api/): a small Node server that implements the API contract below with the same demo data, and streams price ticks over a WebSocket. Contract tests run in CI.
+3. **Your own backend**, if it implements the same contract.
+
+The API URLs come from `--dart-define` and default to `localhost`:
 
 | Where the app runs | Flags |
 | --- | --- |
@@ -112,20 +120,34 @@ Symbols look like `BTC/USD`. Timestamps are ISO 8601 strings.
 
 ## Running it
 
-Prerequisites: the Flutter SDK (stable channel, Dart 3.9 or newer) and the mock API described above.
+Prerequisites: the Flutter SDK (stable channel, Dart 3.9 or newer). Node 22+ only if you want the mock API.
 
 ```bash
 git clone https://github.com/defoibrahim/marketpulse-flutter.git
 cd marketpulse-flutter
 flutter pub get
 
-# Start your mock API on port 3000, then:
+# Quickest: demo mode, no server needed
+flutter run --dart-define=DEMO=true
+```
+
+With the mock API instead:
+
+```bash
+cd mock_api && npm install && npm start   # http://localhost:3000/api, ws://localhost:3000
+# in another terminal, from the repository root:
 flutter run
-# or, on the Android emulator:
+# Android emulator:
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api --dart-define=WS_URL=ws://10.0.2.2:3000
 ```
 
+The mock API reads `PORT` (3000), `TICK_MS` (1000, time between price ticks) and `LATENCY_MS` (0, added to every REST response, handy for seeing the loading states). `npm test` runs its contract tests, and `npm run fixtures` regenerates the demo data deterministically.
+
 To see live prices, open the **Market** tab and tap **OFF** in the app bar so it switches to **LIVE**. Tap it again to stop the stream.
+
+### Screenshots
+
+The screenshots come from the **Screenshots** workflow (run it from the Actions tab). It builds the web app in demo mode and captures each screen with Puppeteer at 430×878 @3x. Demo web builds accept launch options in the URL, so each screen opens directly: `?tab=market|analytics|portfolio`, `&theme=light|dark` and `&symbol=BTC%2FUSD`.
 
 ### Release builds
 
@@ -147,14 +169,15 @@ flutter analyze
 flutter test
 ```
 
-The tests cover the providers (loading, refresh errors, search and sort, the live-price throttle, out-of-order timeframe responses), the WebSocket service (reconnect backoff and stale-socket callbacks, with a fake socket and `fake_async`), the Dio API layer (error mapping and parsing, with a fake HTTP adapter), model parsing and the market list screen. CI runs the same commands on every push and pull request, plus a release APK build.
+The tests cover the providers, demo mode (bundled data and simulated feed), the app running end to end in demo mode, (loading, refresh errors, search and sort, the live-price throttle, out-of-order timeframe responses), the WebSocket service (reconnect backoff and stale-socket callbacks, with a fake socket and `fake_async`), the Dio API layer (error mapping and parsing, with a fake HTTP adapter), model parsing and the market list screen. CI runs the same commands on every push and pull request, plus a release APK build.
 
 `flutter analyze` runs with `--no-fatal-infos`. Flutter 3.47+ deprecates `package:flutter/material.dart` in favour of the `material_ui` package, but `material_ui` is a separate copy of the Material library. Until Material-based dependencies such as skeletonizer and google_nav_bar migrate, moving only this app's imports would split it across two `Theme` and `Material` trees, so those deprecation infos stay for now. Warnings and errors still fail CI.
 
 ## Roadmap
 
-- Bundle a mock API (or an offline demo mode) so the app runs straight after cloning.
-- Widen test coverage to the analytics and portfolio providers, the WebSocket service and the main widgets.
+- Show the portfolio performance series (the provider already loads it per timeframe) as a chart.
+- Move to `package:material_ui` once the Material-based dependencies do.
+- Integration tests on a device or emulator in CI.
 
 ## License
 

@@ -1,0 +1,51 @@
+name: Screenshots
+
+# Builds the web app in demo mode and captures the README / portfolio
+# screenshots at the device-frames viewport (430x878 @3x, no status bar).
+on:
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Add the web platform if missing
+        run: |
+          if [ ! -f web/index.html ]; then
+            flutter create --platforms=web --project-name marketpulse --org com.defoibrahim .
+          fi
+
+      - run: flutter pub get
+
+      - name: Build (demo mode)
+        run: flutter build web --release --dart-define=DEMO=true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Capture
+        working-directory: tool/screenshots
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: |
+          npm install --no-save --no-audit --no-fund puppeteer-core@23
+          node capture.mjs ../../build/web ../../screenshots-raw
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-raw
+          path: screenshots-raw/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-platform
+          path: web/

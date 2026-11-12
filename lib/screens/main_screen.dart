@@ -9,10 +9,14 @@ import '../providers/theme_provider.dart';
 import '../widgets/widgets.dart';
 import 'analytics_screen.dart';
 import 'market_data_screen.dart';
+import 'market_detail_screen.dart';
 import 'portfolio_screen.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({super.key, this.initialSymbol});
+
+  /// A market whose detail screen opens on start (demo launch options).
+  final String? initialSymbol;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -40,6 +44,17 @@ class _MainScreenState extends State<MainScreen> {
         if (mounted) context.read<MarketDataProvider>().resumeRealTime();
       },
     );
+    final symbol = widget.initialSymbol;
+    if (symbol != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => MarketDetailScreen(symbol: symbol),
+          ),
+        );
+      });
+    }
   }
 
   @override
