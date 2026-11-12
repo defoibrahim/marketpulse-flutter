@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
 import 'providers/providers.dart';
 import 'screens/main_screen.dart';
 import 'services/services.dart';
 
-void main() {
-  runApp(const MarketPulseApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final preferences = await SharedPreferences.getInstance();
+  runApp(MarketPulseApp(preferences: preferences));
 }
 
 class MarketPulseApp extends StatelessWidget {
-  const MarketPulseApp({super.key});
+  const MarketPulseApp({super.key, this.preferences});
+
+  /// Stores the theme choice; null keeps it in memory only.
+  final SharedPreferences? preferences;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +34,7 @@ class MarketPulseApp extends StatelessWidget {
         ),
 
         // State, built on the services above.
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider(preferences)),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(
           create: (context) => MarketDataProvider(

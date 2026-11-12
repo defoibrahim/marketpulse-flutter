@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/theme/app_theme.dart';
 import '../providers/market_data_provider.dart';
 import '../services/price_feed.dart';
 
@@ -13,25 +14,27 @@ class LiveToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<MarketDataProvider>();
     final enabled = provider.isRealTimeEnabled;
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final gain = context.marketColors.gain;
     final (Color color, IconData icon, String tooltip) =
         switch (provider.connectionStatus) {
       _ when !enabled => (
-          Colors.grey,
+          muted,
           Icons.wifi_off,
           'Live prices are off. Tap to turn them on.',
         ),
       ConnectionStatus.connected => (
-          Colors.green,
+          gain,
           Icons.wifi,
           'Live prices are on. Tap to turn them off.',
         ),
       ConnectionStatus.connecting || ConnectionStatus.reconnecting => (
-          Colors.amber,
+          Colors.amber.shade700,
           Icons.sync,
           'Connecting to live prices. Tap to turn them off.',
         ),
       ConnectionStatus.disconnected => (
-          Colors.amber,
+          Colors.amber.shade700,
           Icons.sync_problem,
           'Live prices are not connected. Tap to turn them off.',
         ),

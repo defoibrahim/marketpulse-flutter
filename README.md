@@ -33,7 +33,8 @@ The screenshots show demo data from a local mock API (see [Data source](#data-so
 - **Analytics**: total market cap and volume, BTC/ETH/others dominance (donut chart), a trend line with a 1h to 30d timeframe picker, and the top gainer and loser.
 - **Portfolio**: total balance and P&L, an allocation chart (top four holdings plus "others") and the holdings list.
 - **Polished states**: skeleton loading with Skeletonizer, a progress bar, retryable error views, empty and no-match states.
-- **Dark and light themes**: Material 3 themes seeded from one brand colour, switchable at runtime.
+- **Dark and light themes**: Material 3 themes seeded from one brand colour. The app follows the system theme until you pick one, then remembers your choice. Gain and loss colours are tuned per theme for WCAG AA contrast.
+- **Accessible**: screen-reader labels for list rows, prices, sort chips, charts and the live toggle; direction shown by arrows as well as colour; layouts that grow with large text sizes instead of clipping.
 
 ## Architecture
 
@@ -76,6 +77,7 @@ lib/
 | Charts | fl_chart |
 | UI | skeletonizer, google_nav_bar |
 | Formatting | intl |
+| Storage | shared_preferences (theme choice) |
 | Tooling | flutter_lints, mocktail, fake_async, flutter_gen, flutter_native_splash, flutter_launcher_icons |
 | CI | GitHub Actions: `flutter analyze` and `flutter test` on every push and pull request |
 
@@ -125,6 +127,19 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api --dart-define=WS
 
 To see live prices, open the **Market** tab and tap **OFF** in the app bar so it switches to **LIVE**. Tap it again to stop the stream.
 
+### Release builds
+
+`flutter build apk --release` signs with your upload key when `android/key.properties` exists (it is git-ignored):
+
+```properties
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=...
+keyAlias=upload
+keyPassword=...
+```
+
+Without that file, release builds fall back to the debug key and Gradle prints a warning. CI builds a release APK this way on every pull request.
+
 ### Tests and analysis
 
 ```bash
@@ -132,7 +147,9 @@ flutter analyze
 flutter test
 ```
 
-The tests cover the providers (loading, refresh errors, search and sort, the live-price throttle, out-of-order timeframe responses), the WebSocket service (reconnect backoff and stale-socket callbacks, with a fake socket and `fake_async`), the Dio API layer (error mapping and parsing, with a fake HTTP adapter), model parsing and the market list screen. CI runs the same commands on every push and pull request.
+The tests cover the providers (loading, refresh errors, search and sort, the live-price throttle, out-of-order timeframe responses), the WebSocket service (reconnect backoff and stale-socket callbacks, with a fake socket and `fake_async`), the Dio API layer (error mapping and parsing, with a fake HTTP adapter), model parsing and the market list screen. CI runs the same commands on every push and pull request, plus a release APK build.
+
+`flutter analyze` runs with `--no-fatal-infos`. Flutter 3.47+ deprecates `package:flutter/material.dart` in favour of the `material_ui` package, but `material_ui` is a separate copy of the Material library. Until Material-based dependencies such as skeletonizer and google_nav_bar migrate, moving only this app's imports would split it across two `Theme` and `Material` trees, so those deprecation infos stay for now. Warnings and errors still fail CI.
 
 ## Roadmap
 

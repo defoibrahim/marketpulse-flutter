@@ -14,6 +14,7 @@ class AppLinearProgress extends StatelessWidget {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       return LinearProgressIndicator(
         minHeight: 5,
+        semanticsLabel: 'Loading',
         backgroundColor: isDark ? null : Colors.white,
       );
     }

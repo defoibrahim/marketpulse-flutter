@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+
+import '../core/theme/app_theme.dart';
 import '../models/market_data_model.dart';
+import '../providers/market_data_provider.dart';
 import '../utils/extensions.dart';
 import 'symbol_avatar.dart';
-import '../providers/market_data_provider.dart';
 
 /// Search field and sort chips above the market list.
 ///
@@ -93,13 +95,8 @@ class MarketFilterBar extends StatelessWidget {
   }
 }
 
-/// Single Sort Chip
+/// Sort chip: the selected one is filled and shows the sort direction.
 class MarketSortChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final SortOrder sortOrder;
-  final VoidCallback onTap;
-
   const MarketSortChip({
     super.key,
     required this.label,
@@ -108,70 +105,82 @@ class MarketSortChip extends StatelessWidget {
     required this.onTap,
   });
 
+  final String label;
+  final bool isSelected;
+  final SortOrder sortOrder;
+  final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final colors = Theme.of(context).colorScheme;
+    final foreground = isSelected ? colors.onPrimary : colors.onSurface;
+    final ascending = sortOrder == SortOrder.ascending;
 
-    return ActionChip(
-      onPressed: onTap,
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color:
-                  isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return Semantics(
+      selected: isSelected,
+      label: isSelected
+          ? 'Sort by $label, ${ascending ? 'ascending' : 'descending'}. '
+              'Tap to reverse.'
+          : 'Sort by $label',
+      excludeSemantics: true,
+      button: true,
+      onTap: onTap,
+      child: ActionChip(
+        onPressed: onTap,
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: foreground,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
-          ),
-          if (isSelected) ...[
-            const SizedBox(width: 4),
-            Icon(
-              sortOrder == SortOrder.ascending
-                  ? Icons.arrow_upward
-                  : Icons.arrow_downward,
-              size: 14,
-              color: Colors.white,
-            ),
+            if (isSelected) ...[
+              const SizedBox(width: 4),
+              Icon(
+                ascending ? Icons.arrow_upward : Icons.arrow_downward,
+                size: 14,
+                color: foreground,
+              ),
+            ],
           ],
-        ],
+        ),
+        backgroundColor:
+            isSelected ? colors.primary : Theme.of(context).cardColor,
+        side: BorderSide(
+          color: isSelected ? colors.primary : colors.outlineVariant,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
       ),
-      backgroundColor: isSelected ? theme.primaryColor : theme.cardColor,
-      side: BorderSide(
-        color: isSelected
-            ? Colors.grey.withValues(alpha: 0.4)
-            : theme.dividerColor.withValues(alpha: 0.1),
-        width: isSelected ? 1.5 : 1.0,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
     );
   }
 }
 
-/// Error state view
+/// Full-page error with a retry button.
 class MarketErrorView extends StatelessWidget {
-  final String error;
-  final VoidCallback onRetry;
-
   const MarketErrorView({
     super.key,
     required this.error,
     required this.onRetry,
   });
 
+  final String error;
+  final VoidCallback onRetry;
+
   @override
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.error_outline,
               size: 64,
-              color: Colors.red,
+              color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 16),
             Text(
@@ -192,38 +201,33 @@ class MarketErrorView extends StatelessWidget {
   }
 }
 
-/// Empty state view
+/// Empty list: either nothing loaded, or nothing matches the search.
 class MarketEmptyView extends StatelessWidget {
+  const MarketEmptyView({super.key, this.isFiltering = false, this.onClear});
+
   final bool isFiltering;
   final VoidCallback? onClear;
 
-  const MarketEmptyView({super.key, this.isFiltering = false, this.onClear});
-
   @override
   Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.inbox_outlined,
+          Icon(
+            isFiltering ? Icons.search_off : Icons.inbox_outlined,
             size: 64,
-            color: Colors.grey,
+            color: muted,
           ),
           const SizedBox(height: 16),
           Text(
             isFiltering ? 'No matches found' : 'No market data available',
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 16, color: muted),
           ),
           if (isFiltering && onClear != null) ...[
             const SizedBox(height: 16),
-            TextButton(
-              onPressed: onClear,
-              child: const Text('Clear Search'),
-            ),
+            TextButton(onPressed: onClear, child: const Text('Clear Search')),
           ],
         ],
       ),
@@ -231,68 +235,60 @@ class MarketEmptyView extends StatelessWidget {
   }
 }
 
-/// Market Data List Item
+/// One market in the list.
 class MarketDataListItem extends StatelessWidget {
+  const MarketDataListItem({super.key, required this.data, this.onTap});
+
   final MarketData data;
   final VoidCallback? onTap;
 
-  const MarketDataListItem({
-    super.key,
-    required this.data,
-    this.onTap,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final isPositive = data.isPositiveChange;
-    final changeColor = isPositive ? Colors.green : Colors.red;
-    final changeIcon = isPositive ? Icons.arrow_upward : Icons.arrow_downward;
+    final change = data.changePercent24h;
+    final direction = change >= 0 ? 'up' : 'down';
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Symbol Avatar
-              SymbolAvatar(symbol: data.baseSymbol),
-              const SizedBox(width: 16),
-
-              // Symbol and Price
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      data.symbol,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+    return Semantics(
+      button: onTap != null,
+      label: '${data.symbol}, ${data.price.formatAsCurrency()}, '
+          '$direction ${change.abs().toStringAsFixed(2)} percent in 24 hours',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                SymbolAvatar(symbol: data.baseSymbol),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        data.symbol,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      data.price.formatAsCurrency(),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 4),
+                      Text(
+                        data.price.formatAsCurrency(),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-
-              // Change Badge
-              _ChangeBadge(
-                changePercent: data.changePercent24h,
-                isPositive: isPositive,
-                color: changeColor,
-                icon: changeIcon,
-              ),
-            ],
+                ChangeBadge(changePercent: change),
+              ],
+            ),
           ),
         ),
       ),
@@ -300,36 +296,32 @@ class MarketDataListItem extends StatelessWidget {
   }
 }
 
-/// Badge showing percentage change with color
-class _ChangeBadge extends StatelessWidget {
-  final double changePercent;
-  final bool isPositive;
-  final Color color;
-  final IconData icon;
+/// Coloured 24h change with an arrow, so the direction isn't shown by colour
+/// alone.
+class ChangeBadge extends StatelessWidget {
+  const ChangeBadge({super.key, required this.changePercent});
 
-  const _ChangeBadge({
-    required this.changePercent,
-    required this.isPositive,
-    required this.color,
-    required this.icon,
-  });
+  final double changePercent;
 
   @override
   Widget build(BuildContext context) {
+    final color = context.marketColors.forChange(changePercent);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark
-            ? color.withValues(alpha: 0.25)
-            : color.withValues(alpha: 0.15),
+        color: color.withValues(alpha: isDark ? 0.2 : 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 16),
+          Icon(
+            changePercent >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
+            color: color,
+            size: 16,
+          ),
           const SizedBox(width: 4),
           Text(
             changePercent.formatAsPercentage(),

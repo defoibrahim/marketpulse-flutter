@@ -70,15 +70,17 @@ class _MainScreenState extends State<MainScreen> {
         ),
         elevation: 0,
         actions: [
-          Consumer<ThemeProvider>(
-            builder: (context, themeProvider, child) {
-              final isDark = themeProvider.isDarkMode;
+          Builder(
+            builder: (context) {
+              final brightness = Theme.of(context).brightness;
+              final isDark = brightness == Brightness.dark;
               return IconButton(
                 icon: Icon(
                   isDark ? Icons.light_mode : Icons.dark_mode,
                   color: isDark ? Colors.amber : Colors.indigo,
                 ),
-                onPressed: themeProvider.toggleTheme,
+                onPressed: () =>
+                    context.read<ThemeProvider>().toggle(brightness),
                 tooltip: isDark ? 'Switch to light mode' : 'Switch to dark mode',
               );
             },

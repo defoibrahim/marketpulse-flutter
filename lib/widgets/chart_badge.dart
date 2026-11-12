@@ -1,31 +1,27 @@
 import 'package:flutter/material.dart';
 
-/// Shared badge widget for pie charts
-/// Used in analytics and portfolio widgets
+/// Label badge on a pie-chart section, shared by analytics and portfolio.
 class ChartBadge extends StatelessWidget {
-  final String label;
   const ChartBadge(this.label, {super.key});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.8),
+        color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(4),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 2,
-            offset: Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 2)),
         ],
       ),
       child: Text(
         label,
         style: const TextStyle(
           color: Colors.black,
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
       ),

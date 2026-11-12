@@ -22,8 +22,4 @@ class AppConstants {
 
   // Timeframes
   static const List<String> timeframes = ['1h', '4h', '24h', '7d', '30d'];
-
-  // Colors
-  static const int positiveColor = 0xFF4CAF50; // Green
-  static const int negativeColor = 0xFFF44336; // Red
 }

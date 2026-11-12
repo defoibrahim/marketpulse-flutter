@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
+import '../core/theme/app_theme.dart';
 import '../models/analytics_model.dart';
 import '../providers/analytics_provider.dart';
 import '../utils/constants.dart';
@@ -86,7 +87,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                   label: '24h Volume',
                                   value: overview.totalVolume24h.formatCompact(),
                                   icon: Icons.bar_chart,
-                                  color: Colors.blue,
+                                  color: Colors.blue.shade400,
                                 ),
                               ),
                             ],
@@ -182,50 +183,48 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 }
 
 class _MoverTile extends StatelessWidget {
-  final String title;
-  final MarketMover mover;
-  final bool isGainer;
-
   const _MoverTile({
     required this.title,
     required this.mover,
     required this.isGainer,
   });
 
+  final String title;
+  final MarketMover mover;
+  final bool isGainer;
+
   @override
   Widget build(BuildContext context) {
+    final color = context.marketColors.forChange(mover.change);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isGainer ? Colors.green : Colors.red;
 
     return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: isDark
-              ? color.withValues(alpha: 0.2)
-              : color.withValues(alpha: 0.1),
-          child: Icon(
-            isGainer ? Icons.arrow_upward : Icons.arrow_downward,
-            color: color,
+      margin: EdgeInsets.zero,
+      child: MergeSemantics(
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: color.withValues(alpha: isDark ? 0.2 : 0.12),
+            child: Icon(
+              isGainer ? Icons.arrow_upward : Icons.arrow_downward,
+              color: color,
+            ),
           ),
-        ),
-        title: Text(title),
-        subtitle: Text(mover.symbol),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              mover.price.formatAsCurrency(),
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              mover.change.formatAsPercentage(),
-              style: TextStyle(
-                color: isGainer ? Colors.green : Colors.red,
-                fontSize: 12,
+          title: Text(title),
+          subtitle: Text(mover.symbol),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                mover.price.formatAsCurrency(),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-          ],
+              Text(
+                mover.change.formatAsPercentage(),
+                style: TextStyle(color: color, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );

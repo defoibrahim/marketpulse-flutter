@@ -1,79 +1,89 @@
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+
+import '../core/theme/app_theme.dart';
 import '../models/portfolio_model.dart';
 import '../utils/extensions.dart';
 import 'chart_badge.dart';
+import 'symbol_avatar.dart';
 
 class PortfolioSummaryCard extends StatelessWidget {
-  final PortfolioOverview overview;
-
   const PortfolioSummaryCard({super.key, required this.overview});
+
+  final PortfolioOverview overview;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF6C5CE7), Color(0xFFA29BFE)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    final isGain = overview.totalPnl >= 0;
+    final change = '${overview.totalPnl.formatAsSignedCurrency()} '
+        '(${overview.totalPnlPercent.formatAsPercentage()})';
+
+    return Semantics(
+      label: 'Total balance ${overview.totalValue.formatAsCurrency()}, '
+          '${isGain ? 'up' : 'down'} $change',
+      excludeSemantics: true,
+      child: Card(
+        elevation: 4,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: AppTheme.brandGradient,
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Total Balance',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              overview.totalValue.formatAsCurrency(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Total Balance',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  overview.totalValue.formatAsCurrency(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        overview.totalPnl >= 0
-                            ? Icons.arrow_upward
-                            : Icons.arrow_downward,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${overview.totalPnl >= 0 ? '+' : ''}${overview.totalPnl.formatAsCurrency()} (${overview.totalPnlPercent}%)',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isGain ? Icons.arrow_upward : Icons.arrow_downward,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        change,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -81,50 +91,40 @@ class PortfolioSummaryCard extends StatelessWidget {
 }
 
 class AssetListTile extends StatelessWidget {
-  final PortfolioHolding holding;
-
   const AssetListTile({super.key, required this.holding});
+
+  final PortfolioHolding holding;
 
   @override
   Widget build(BuildContext context) {
-    final isPositive = holding.pnl >= 0;
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).primaryColor;
+    final ticker = holding.symbol.split('/').first;
+    final color = context.marketColors.forChange(holding.pnl);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: isDark
-              ? primaryColor.withValues(alpha: 0.2)
-              : primaryColor.withValues(alpha: 0.1),
-          child: Text(
-            holding.symbol.split('/')[0].substring(0, 1),
-            style: TextStyle(
-                color: isDark ? Colors.white : primaryColor,
-                fontWeight: FontWeight.bold),
+      child: MergeSemantics(
+        child: ListTile(
+          leading: SymbolAvatar(symbol: ticker),
+          title: Text(
+            holding.symbol,
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-        ),
-        title: Text(holding.symbol,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('${holding.quantity} Coins'),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              holding.currentPrice.formatAsCurrency(),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            Text(
-              '${isPositive ? '+' : ''}${holding.pnlPercent.toStringAsFixed(2)}%',
-              style: TextStyle(
-                color: isPositive ? Colors.green : Colors.red,
-                fontSize: 12,
+          subtitle: Text('${holding.quantity.formatQuantity()} $ticker'),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                holding.value.formatAsCurrency(),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-            ),
-          ],
+              Text(
+                holding.pnlPercent.formatAsPercentage(),
+                style: TextStyle(color: color, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -132,68 +132,65 @@ class AssetListTile extends StatelessWidget {
 }
 
 class AllocationPieChart extends StatelessWidget {
-  final List<PortfolioHolding> holdings;
-
   const AllocationPieChart({super.key, required this.holdings});
+
+  final List<PortfolioHolding> holdings;
 
   @override
   Widget build(BuildContext context) {
     if (holdings.isEmpty) return const SizedBox.shrink();
 
-    // Take top 4 holdings, group others
-    final sortedHoldings = List.of(holdings)
+    // The four largest holdings, then everything else as "others".
+    final sorted = List.of(holdings)
       ..sort((a, b) => b.allocation.compareTo(a.allocation));
+    final top = sorted.take(4).toList();
+    final others =
+        sorted.skip(4).fold(0.0, (sum, item) => sum + item.allocation);
+    String ticker(PortfolioHolding h) => h.symbol.split('/').first;
 
-    final topHoldings = sortedHoldings.take(4).toList();
-    final otherAllocation =
-        sortedHoldings.skip(4).fold(0.0, (sum, item) => sum + item.allocation);
-
-    return AspectRatio(
-      aspectRatio: 1.8,
-      child: PieChart(
-        PieChartData(
-          sectionsSpace: 2,
-          centerSpaceRadius: 40,
-          sections: [
-            ...topHoldings.map((h) {
-              return PieChartSectionData(
-                color: _getColorForSymbol(h.symbol),
-                value: h.allocation,
-                title: '${h.allocation}%',
-                radius: 60,
-                titleStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+    return Semantics(
+      label: 'Asset allocation: ${[
+        for (final h in top) '${ticker(h)} ${h.allocation.toStringAsFixed(1)} percent',
+        if (others > 0) 'others ${others.toStringAsFixed(1)} percent',
+      ].join(', ')}',
+      excludeSemantics: true,
+      child: AspectRatio(
+        aspectRatio: 1.8,
+        child: PieChart(
+          PieChartData(
+            sectionsSpace: 2,
+            centerSpaceRadius: 40,
+            sections: [
+              for (final h in top)
+                PieChartSectionData(
+                  color: symbolColor(h.symbol),
+                  value: h.allocation,
+                  title: '${h.allocation.toStringAsFixed(1)}%',
+                  radius: 60,
+                  titleStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: contrastingTextColor(symbolColor(h.symbol)),
+                  ),
+                  badgeWidget: Skeleton.ignore(child: ChartBadge(ticker(h))),
+                  badgePositionPercentageOffset: .98,
                 ),
-                badgeWidget:
-                    Skeleton.ignore(child: ChartBadge(h.symbol.split('/')[0])),
-                badgePositionPercentageOffset: .98,
-              );
-            }),
-            if (otherAllocation > 0)
-              PieChartSectionData(
-                color: Colors.grey,
-                value: otherAllocation,
-                title: '${otherAllocation.toStringAsFixed(1)}%',
-                radius: 50,
-                titleStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+              if (others > 0)
+                PieChartSectionData(
+                  color: Colors.grey,
+                  value: others,
+                  title: '${others.toStringAsFixed(1)}%',
+                  radius: 50,
+                  titleStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: contrastingTextColor(Colors.grey),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
-  }
-
-  Color _getColorForSymbol(String symbol) {
-    if (symbol.contains('BTC')) return Colors.orange;
-    if (symbol.contains('ETH')) return Colors.blue;
-    if (symbol.contains('SOL')) return Colors.purple;
-    if (symbol.contains('ADA')) return Colors.blueAccent;
-    return Colors.teal;
   }
 }
