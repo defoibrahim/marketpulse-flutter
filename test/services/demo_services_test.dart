@@ -22,11 +22,11 @@ class FileBundle extends CachingAssetBundle {
 
 class MissingBundle extends CachingAssetBundle {
   @override
-  Future<ByteData> load(String key) => throw FlutterError('missing $key');
+  Future<ByteData> load(String key) => throw StateError('missing $key');
 
   @override
   Future<String> loadString(String key, {bool cache = true}) =>
-      throw FlutterError('missing $key');
+      throw StateError('missing $key');
 }
 
 T right<T>(Either<Failure, T> result) =>
