@@ -139,6 +139,12 @@ class TrendLineChart extends StatelessWidget {
   }
 }
 
+/// Percentage label for a pie slice. Slices under 4% are too thin for a
+/// label (it would sit on the neighbours); the chart's semantics label still
+/// lists every value.
+String sliceTitle(double percent) =>
+    percent < 4 ? '' : '${percent.toStringAsFixed(1)}%';
+
 class DominancePieChart extends StatelessWidget {
   const DominancePieChart({super.key, required this.dominance});
 
@@ -171,7 +177,8 @@ class DominancePieChart extends StatelessWidget {
                 PieChartSectionData(
                   color: color,
                   value: value,
-                  title: '${value.toStringAsFixed(1)}%',
+                  title: sliceTitle(value),
+                  titlePositionPercentageOffset: 0.4,
                   radius: value == largest ? 60 : 50,
                   titleStyle: TextStyle(
                     fontSize: 12,

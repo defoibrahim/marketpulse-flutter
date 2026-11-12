@@ -103,4 +103,9 @@ void main() {
     expect(MarketColors.light.forChange(-1), MarketColors.light.loss);
     expect(MarketColors.light.forChange(0), MarketColors.light.gain);
   });
+
+  test('thin pie slices get no label of their own', () {
+    expect(sliceTitle(1.1), '');
+    expect(sliceTitle(4.4), '4.4%');
+  });
 }

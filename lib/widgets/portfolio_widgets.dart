@@ -5,6 +5,7 @@ import 'package:skeletonizer/skeletonizer.dart';
 import '../core/theme/app_theme.dart';
 import '../models/portfolio_model.dart';
 import '../utils/extensions.dart';
+import 'analytics_widgets.dart' show sliceTitle;
 import 'chart_badge.dart';
 import 'symbol_avatar.dart';
 
@@ -165,7 +166,8 @@ class AllocationPieChart extends StatelessWidget {
                 PieChartSectionData(
                   color: symbolColor(h.symbol),
                   value: h.allocation,
-                  title: '${h.allocation.toStringAsFixed(1)}%',
+                  title: sliceTitle(h.allocation),
+                  titlePositionPercentageOffset: 0.4,
                   radius: 60,
                   titleStyle: TextStyle(
                     fontSize: 12,
@@ -179,7 +181,8 @@ class AllocationPieChart extends StatelessWidget {
                 PieChartSectionData(
                   color: Colors.grey,
                   value: others,
-                  title: '${others.toStringAsFixed(1)}%',
+                  title: sliceTitle(others),
+                  titlePositionPercentageOffset: 0.4,
                   radius: 50,
                   titleStyle: TextStyle(
                     fontSize: 12,
