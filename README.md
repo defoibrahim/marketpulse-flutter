@@ -22,7 +22,7 @@ I built it as a practice project to work through a realistic data-heavy mobile a
   <img src="screenshots/light_mode.png" alt="Portfolio screen in the light theme" width="31%">
 </p>
 
-The screenshots show demo data (see [Data source](#data-source)).
+The screenshots are real captures of the app running in demo mode, taken by the [Screenshots workflow](#screenshots-1) (see [Data source](#data-source)).
 
 ## Features
 
