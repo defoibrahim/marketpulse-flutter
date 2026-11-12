@@ -1,5 +1,5 @@
-name: pulsenow_flutter
-description: PulseNow Flutter Assessment - Crypto Trading & Analytics Platform
+name: marketpulse
+description: MarketPulse - a Flutter crypto market tracker with live prices, analytics and portfolio views.
 publish_to: "none"
 version: 1.0.0+1
 

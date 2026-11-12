@@ -35,7 +35,7 @@ class MainScreen extends StatelessWidget {
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(width: 12),
-                const Text('PulseNow'),
+                const Text('MarketPulse'),
               ],
             ),
             elevation: 0,
