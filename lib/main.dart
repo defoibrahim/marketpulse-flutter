@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import 'core/theme/app_theme.dart';
 import 'providers/providers.dart';
 import 'screens/main_screen.dart';
 import 'services/services.dart';
-import 'core/theme/app_theme.dart';
 
 void main() {
   runApp(const MarketPulseApp());
@@ -16,24 +17,23 @@ class MarketPulseApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // 1. Provide services FIRST (singleton instances)
+        // Services: one instance each, owned and disposed by Provider.
         Provider<ApiService>(
-          create: (_) => ApiService(),
+          create: (_) => DioApiService(),
           dispose: (_, service) => service.dispose(),
         ),
-        Provider<WebSocketService>(
+        Provider<PriceFeed>(
           create: (_) => WebSocketService(),
-          dispose: (_, service) => service.dispose(),
+          dispose: (_, feed) => feed.dispose(),
         ),
 
-        // 2. Provide ViewModels/Connectors dealing with state
-        // They depend on the services above
+        // State, built on the services above.
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => NavigationProvider()),
         ChangeNotifierProvider(
           create: (context) => MarketDataProvider(
             apiService: context.read<ApiService>(),
-            wsService: context.read<WebSocketService>(),
+            priceFeed: context.read<PriceFeed>(),
           ),
         ),
         ChangeNotifierProvider(
@@ -48,16 +48,9 @@ class MarketPulseApp extends StatelessWidget {
           return MaterialApp(
             title: 'MarketPulse',
             debugShowCheckedModeBanner: false,
-
-            // Dynamic Theme Mode
             themeMode: themeProvider.themeMode,
-
-            // Light Theme
             theme: AppTheme.light,
-
-            // Dark Theme
             darkTheme: AppTheme.dark,
-
             home: const MainScreen(),
           );
         },

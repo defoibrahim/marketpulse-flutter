@@ -1,19 +1,21 @@
-// App-wide constants
+/// App-wide constants.
 class AppConstants {
-  // API Configuration
-  // Note: For Android emulator, use 10.0.2.2 instead of localhost
-  // For iOS simulator, localhost works fine
-  // For physical device, use your computer's IP address
+  AppConstants._();
 
-  // Physical Device (current)
-  static const String baseUrl = 'http://192.168.1.54:3000/api';
-  static const String wsUrl = 'ws://192.168.1.54:3000';
+  /// REST API base URL. Override at build time, for example on the Android
+  /// emulator: `--dart-define=API_BASE_URL=http://10.0.2.2:3000/api`.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:3000/api',
+  );
 
-  // iOS Simulator / Web (uncomment these for iOS or web)
-  // static const String baseUrl = 'http://localhost:3000/api';
-  // static const String wsUrl = 'ws://localhost:3000';
+  /// WebSocket URL for live prices: `--dart-define=WS_URL=ws://10.0.2.2:3000`.
+  static const String wsUrl = String.fromEnvironment(
+    'WS_URL',
+    defaultValue: 'ws://localhost:3000',
+  );
 
-  // API Endpoints
+  // API endpoints
   static const String marketDataEndpoint = '/market-data';
   static const String analyticsEndpoint = '/analytics';
   static const String portfolioEndpoint = '/portfolio';

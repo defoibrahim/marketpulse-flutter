@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'json_readers.dart';
+
 class AnalyticsOverview extends Equatable {
   final double totalMarketCap;
   final double totalVolume24h;
@@ -21,13 +23,13 @@ class AnalyticsOverview extends Equatable {
 
   factory AnalyticsOverview.fromJson(Map<String, dynamic> json) {
     return AnalyticsOverview(
-      totalMarketCap: (json['totalMarketCap'] as num).toDouble(),
-      totalVolume24h: (json['totalVolume24h'] as num).toDouble(),
-      activeMarkets: json['activeMarkets'] as int,
-      topGainer: MarketMover.fromJson(json['topGainer']),
-      topLoser: MarketMover.fromJson(json['topLoser']),
-      dominance: MarketDominance.fromJson(json['marketDominance']),
-      lastUpdated: DateTime.parse(json['lastUpdated']),
+      totalMarketCap: readDouble(json, 'totalMarketCap'),
+      totalVolume24h: readDouble(json, 'totalVolume24h'),
+      activeMarkets: readInt(json, 'activeMarkets'),
+      topGainer: MarketMover.fromJson(readMap(json, 'topGainer')),
+      topLoser: MarketMover.fromJson(readMap(json, 'topLoser')),
+      dominance: MarketDominance.fromJson(readMap(json, 'marketDominance')),
+      lastUpdated: readDate(json, 'lastUpdated'),
     );
   }
 
@@ -66,9 +68,9 @@ class MarketMover extends Equatable {
 
   factory MarketMover.fromJson(Map<String, dynamic> json) {
     return MarketMover(
-      symbol: json['symbol'] as String,
-      change: (json['change'] as num).toDouble(),
-      price: (json['price'] as num).toDouble(),
+      symbol: readString(json, 'symbol'),
+      change: readDouble(json, 'change'),
+      price: readDouble(json, 'price'),
     );
   }
 
@@ -89,9 +91,9 @@ class MarketDominance extends Equatable {
 
   factory MarketDominance.fromJson(Map<String, dynamic> json) {
     return MarketDominance(
-      btc: (json['btc'] as num).toDouble(),
-      eth: (json['eth'] as num).toDouble(),
-      others: (json['others'] as num).toDouble(),
+      btc: readDouble(json, 'btc'),
+      eth: readDouble(json, 'eth'),
+      others: readDouble(json, 'others'),
     );
   }
 
@@ -112,9 +114,9 @@ class TrendData extends Equatable {
 
   factory TrendData.fromJson(Map<String, dynamic> json) {
     return TrendData(
-      timeframe: json['timeframe'] as String,
-      data: (json['data'] as List).map((e) => MarketTrend.fromJson(e)).toList(),
-      summary: TrendSummary.fromJson(json['summary']),
+      timeframe: readString(json, 'timeframe'),
+      data: readList(json, 'data').map(MarketTrend.fromJson).toList(),
+      summary: TrendSummary.fromJson(readMap(json, 'summary')),
     );
   }
 
@@ -151,10 +153,10 @@ class MarketTrend extends Equatable {
 
   factory MarketTrend.fromJson(Map<String, dynamic> json) {
     return MarketTrend(
-      timestamp: DateTime.parse(json['timestamp']),
-      marketCap: (json['marketCap'] as num).toDouble(),
-      volume: (json['volume'] as num).toDouble(),
-      priceIndex: (json['priceIndex'] as num).toDouble(),
+      timestamp: readDate(json, 'timestamp'),
+      marketCap: readDouble(json, 'marketCap'),
+      volume: readDouble(json, 'volume'),
+      priceIndex: readDouble(json, 'priceIndex'),
     );
   }
 
@@ -173,8 +175,8 @@ class TrendSummary extends Equatable {
 
   factory TrendSummary.fromJson(Map<String, dynamic> json) {
     return TrendSummary(
-      change: (json['change'] as num).toDouble(),
-      volatility: (json['volatility'] as num).toDouble(),
+      change: readDouble(json, 'change'),
+      volatility: readDouble(json, 'volatility'),
     );
   }
 

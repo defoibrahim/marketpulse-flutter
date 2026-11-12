@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:equatable/equatable.dart';
+
+import 'json_readers.dart';
 
 /// Model representing market data for a crypto symbol
 /// Maps to: GET /api/market-data response
@@ -27,32 +31,39 @@ class MarketData extends Equatable {
     required this.lastUpdated,
   });
 
-  /// Factory constructor to parse JSON from API
+  /// Parses one item of `GET /market-data`. Throws [FormatException] when a
+  /// required field is missing or malformed.
   factory MarketData.fromJson(Map<String, dynamic> json) {
+    final description = json['description'];
     return MarketData(
-      symbol: json['symbol'] as String,
-      description: json['description'] as String? ?? '',
-      price: (json['price'] as num).toDouble(),
-      change24h: (json['change24h'] as num).toDouble(),
-      changePercent24h: (json['changePercent24h'] as num).toDouble(),
-      volume: (json['volume'] as num).toDouble(),
-      high24h: (json['high24h'] as num).toDouble(),
-      low24h: (json['low24h'] as num).toDouble(),
-      marketCap: (json['marketCap'] as num).toDouble(),
-      lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+      symbol: readString(json, 'symbol'),
+      description: description is String ? description : '',
+      price: readDouble(json, 'price'),
+      change24h: readDouble(json, 'change24h'),
+      changePercent24h: readDouble(json, 'changePercent24h'),
+      volume: readDouble(json, 'volume'),
+      high24h: readDouble(json, 'high24h'),
+      low24h: readDouble(json, 'low24h'),
+      marketCap: readDouble(json, 'marketCap'),
+      lastUpdated: readDate(json, 'lastUpdated'),
     );
   }
 
-  /// Factory for partial updates from JSON (e.g., WebSocket updates)
+  /// Applies a partial live update (a WebSocket `market_update` payload).
+  /// Fields that are absent or invalid keep their current value, and the 24h
+  /// high and low stretch to include the new price.
   factory MarketData.updateFromJson(
       MarketData existing, Map<String, dynamic> json) {
+    final price = readDoubleOrNull(json, 'price');
+    final timestamp = json['timestamp'];
     return existing.copyWith(
-      price: double.tryParse(json['price']?.toString() ?? ''),
-      change24h: double.tryParse(json['change24h']?.toString() ?? ''),
-      changePercent24h:
-          double.tryParse(json['changePercent24h']?.toString() ?? ''),
-      volume: double.tryParse(json['volume']?.toString() ?? ''),
-      lastUpdated: DateTime.tryParse(json['timestamp'] ?? ''),
+      price: price,
+      change24h: readDoubleOrNull(json, 'change24h'),
+      changePercent24h: readDoubleOrNull(json, 'changePercent24h'),
+      volume: readDoubleOrNull(json, 'volume'),
+      high24h: price == null ? null : math.max(existing.high24h, price),
+      low24h: price == null ? null : math.min(existing.low24h, price),
+      lastUpdated: timestamp is String ? DateTime.tryParse(timestamp) : null,
     );
   }
 
